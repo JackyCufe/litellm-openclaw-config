@@ -1,0 +1,80 @@
+model_list:
+  # ── Claude via Google Cloud Vertex AI ────────────────────────────
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: vertex_ai/claude-sonnet-4-6
+      vertex_project: YOUR_GCP_PROJECT_ID       # e.g. my-project-123
+      vertex_location: us-east5                 # Vertex AI region for Claude
+      vertex_credentials: /path/to/service-account.json  # GCP SA key file
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  - model_name: claude-opus-4-6
+    litellm_params:
+      model: vertex_ai/claude-opus-4-6
+      vertex_project: YOUR_GCP_PROJECT_ID
+      vertex_location: us-east5
+      vertex_credentials: /path/to/service-account.json
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  - model_name: claude-haiku-3-5
+    litellm_params:
+      model: vertex_ai/claude-haiku-3-5
+      vertex_project: YOUR_GCP_PROJECT_ID
+      vertex_location: us-east5
+      vertex_credentials: /path/to/service-account.json
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  # ── Gemini via Google Cloud Vertex AI ────────────────────────────
+  - model_name: gemini-flash
+    litellm_params:
+      model: vertex_ai/gemini-2.0-flash-001
+      vertex_project: YOUR_GCP_PROJECT_ID
+      vertex_location: us-east5
+      vertex_credentials: /path/to/service-account.json
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  # ── OpenAI (direct) ──────────────────────────────────────────────
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: openai/gpt-4o
+  #     api_key: sk-YOUR_OPENAI_API_KEY
+
+  # ── Anthropic (direct) ───────────────────────────────────────────
+  # - model_name: claude-3-5-sonnet
+  #   litellm_params:
+  #     model: anthropic/claude-3-5-sonnet-20241022
+  #     api_key: sk-ant-YOUR_ANTHROPIC_API_KEY
+
+router_settings:
+  default_litellm_params:
+    drop_params: true
+    additional_drop_params:
+      - store
+      - service_tier
+    # Automatically inject prompt caching control points
+    cache_control_injection_points:
+      - location: message
+        role: system
+      - location: message
+        index: -1            # last user message
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  master_key: sk-YOUR-MASTER-KEY    # Change this! Used for LiteLLM UI + API auth
+  ui_username: admin
+  ui_password: YOUR-UI-PASSWORD     # Change this!
+  use_aiohttp_transport: false
