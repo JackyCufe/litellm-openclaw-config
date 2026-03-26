@@ -1,48 +1,43 @@
 # LiteLLM Config for OpenClaw
 
-A minimal but production-ready [LiteLLM](https://github.com/BerriAI/litellm) proxy configuration for running Claude and Gemini models via **Google Cloud Vertex AI**, designed to work with [OpenClaw](https://github.com/openclaw/openclaw).
+A minimal but production-ready [LiteLLM](https://github.com/BerriAI/litellm) proxy configuration for running Claude models with **Prompt Caching**, designed to work with [OpenClaw](https://github.com/openclaw/openclaw).
 
-## What's Inside
+Two configs included — pick the one that fits you:
 
-| File | Purpose |
-|------|---------|
-| `litellm.config.yaml` | Main proxy config — model list, router settings, auth |
+| Config | Who it's for | Prerequisite |
+|--------|-------------|-------------|
+| `litellm.config.anthropic.yaml` | **Individual / Personal** | Anthropic API Key only |
+| `litellm.config.yaml` | **Enterprise / GCP users** | Google Cloud project + Vertex AI |
 
-## Why Vertex AI for Claude?
+---
 
-Calling Claude through Vertex AI instead of the Anthropic API directly gives you:
+## 🙋 Personal Quick Start (Recommended)
 
-- 🔐 **GCP IAM auth** — no API key rotation headaches
-- 💰 **Potentially lower cost** depending on your GCP committed use discounts
-- 🌏 **Regional control** — pin traffic to `us-east5` or other supported regions
-- 🤝 **Unified billing** — Claude + Gemini on the same GCP invoice
+The simplest path — just an Anthropic API Key and you're done.
 
-## Prerequisites
+### Prerequisites
 
-1. **Google Cloud Project** with Vertex AI API enabled
-2. **Service Account** JSON key with `Vertex AI User` role
-3. **Claude model access** requested in Vertex AI Model Garden ([apply here](https://console.cloud.google.com/vertex-ai/model-garden))
-4. **LiteLLM** installed:
+1. **Anthropic API Key** — get one at [console.anthropic.com](https://console.anthropic.com)
+2. **LiteLLM installed:**
    ```bash
    pip install litellm[proxy]
    ```
 
-## Quick Start
+### Setup
 
 ```bash
 # Clone this repo
 git clone https://github.com/JackyCufe/litellm-openclaw-config
 cd litellm-openclaw-config
 
-# Copy and fill in your values
-cp litellm.config.yaml litellm.config.local.yaml
-# Edit: YOUR_GCP_PROJECT_ID, /path/to/service-account.json, master_key, ui_password
+# Set your API key
+export ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE
 
 # Start the proxy
-litellm --config litellm.config.local.yaml --port 4000
+litellm --config litellm.config.anthropic.yaml --port 4000
 ```
 
-Then test it:
+That's it. Test it:
 
 ```bash
 curl http://localhost:4000/v1/chat/completions \
@@ -54,70 +49,97 @@ curl http://localhost:4000/v1/chat/completions \
   }'
 ```
 
-## Key Config Highlights
+### Using with OpenClaw
 
-### `drop_params: true` + `additional_drop_params`
-
-OpenClaw (and some other clients) may send extra fields like `store` or `service_tier` that Vertex AI doesn't accept. These settings silently drop unknown params instead of erroring out.
+In your OpenClaw config, point to the local proxy:
 
 ```yaml
-additional_drop_params:
-  - store
-  - service_tier
-```
-
-### `cache_control_injection_points`
-
-Enables **prompt caching** on system messages and the last user turn automatically — cuts costs and latency on repeated context.
-
-```yaml
-cache_control_injection_points:
-  - location: message
-    role: system
-  - location: message
-    index: -1
-```
-
-### Adding OpenAI / Anthropic Direct
-
-Uncomment the examples at the bottom of `litellm.config.yaml` and swap in your API keys.
-
-## Using with OpenClaw
-
-In your OpenClaw config, point the model provider to your local LiteLLM proxy:
-
-```yaml
-# openclaw config (example)
 model: litellm/claude-sonnet-4-6
 litellm:
   api_base: http://localhost:4000
   api_key: sk-YOUR-MASTER-KEY
 ```
 
+---
+
+## 🏢 Enterprise / GCP Vertex AI
+
+For teams already on Google Cloud — Claude + Gemini via Vertex AI, unified GCP billing.
+
+### Prerequisites
+
+1. **Google Cloud Project** with Vertex AI API enabled
+2. **Service Account** JSON key with `Vertex AI User` role
+3. **Claude model access** requested in Vertex AI Model Garden ([apply here](https://console.cloud.google.com/vertex-ai/model-garden))
+4. LiteLLM installed
+
+### Setup
+
+```bash
+# Copy and fill in your values
+cp litellm.config.yaml litellm.config.local.yaml
+# Edit: YOUR_GCP_PROJECT_ID, /path/to/service-account.json, master_key, ui_password
+
+# Start the proxy
+litellm --config litellm.config.local.yaml --port 4000
+```
+
+---
+
+## 💡 Why LiteLLM + Prompt Caching?
+
+Both configs include **Prompt Caching** — the biggest cost saver when running AI agents:
+
+```yaml
+cache_control_injection_points:
+  - location: message
+    role: system     # Cache long system prompts (MEMORY.md, SOUL.md, etc.)
+  - location: message
+    index: -1        # Cache the last user message
+```
+
+With an agent like OpenClaw that injects large workspace files every turn, caching slashes repeated token costs by up to 90%.
+
+### `drop_params` — Compatibility Fix
+
+OpenClaw and some other clients send extra fields (`store`, `service_tier`) that Claude/Vertex AI doesn't accept. These settings silently drop them:
+
+```yaml
+drop_params: true
+additional_drop_params:
+  - store
+  - service_tier
+```
+
+---
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `litellm.config.anthropic.yaml` | Personal config — Claude via Anthropic direct API |
+| `litellm.config.yaml` | Enterprise config — Claude + Gemini via GCP Vertex AI |
+
+---
+
 ## Security Notes
 
-- ⚠️ Never commit your actual service account JSON or master key
-- Add `litellm.config.local.yaml` and `*.json` to `.gitignore`
-- Use environment variables for secrets in production:
-  ```yaml
-  vertex_credentials: os.environ/GOOGLE_APPLICATION_CREDENTIALS
-  master_key: os.environ/LITELLM_MASTER_KEY
+- ⚠️ Never commit your actual API keys or service account JSON
+- Use environment variables for secrets:
+  ```bash
+  export ANTHROPIC_API_KEY=sk-ant-...
+  export LITELLM_MASTER_KEY=sk-...
   ```
+- Add `litellm.config.local.yaml`, `*.json`, `.env` to `.gitignore`
 
-## .gitignore
-
-```
-litellm.config.local.yaml
-*.json
-.env
-```
+---
 
 ## References
 
 - [LiteLLM Docs](https://docs.litellm.ai)
+- [Anthropic API Docs](https://docs.anthropic.com)
 - [LiteLLM Vertex AI Guide](https://docs.litellm.ai/docs/providers/vertex)
 - [OpenClaw](https://github.com/openclaw/openclaw)
-- [Vertex AI Claude Model Garden](https://console.cloud.google.com/vertex-ai/model-garden)
 
 ---
 

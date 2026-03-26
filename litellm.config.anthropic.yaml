@@ -1,0 +1,61 @@
+model_list:
+  # ── Claude via Anthropic API (direct) ────────────────────────────
+  # 适合个人用户：只需要一个 Anthropic API Key，5 分钟跑起来
+  # 获取 API Key：https://console.anthropic.com
+
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY   # 推荐用环境变量
+      # api_key: sk-ant-YOUR_KEY_HERE         # 或直接填写（不要提交到 git！）
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  - model_name: claude-haiku-3-5
+    litellm_params:
+      model: anthropic/claude-haiku-3-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  - model_name: claude-opus-4-6
+    litellm_params:
+      model: anthropic/claude-opus-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+      drop_params: true
+      additional_drop_params:
+        - store
+        - service_tier
+
+  # ── OpenAI (可选) ─────────────────────────────────────────────────
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: openai/gpt-4o
+  #     api_key: os.environ/OPENAI_API_KEY
+
+router_settings:
+  default_litellm_params:
+    drop_params: true
+    additional_drop_params:
+      - store
+      - service_tier
+    # Prompt Caching：自动注入缓存控制点，减少重复上下文费用
+    # 对 Claude 3.5+ 有效，缓存命中可节省 90% token 费用
+    cache_control_injection_points:
+      - location: message
+        role: system          # 缓存系统消息（MEMORY.md、SOUL.md 等长前缀）
+      - location: message
+        index: -1             # 缓存最后一条 user 消息
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  master_key: sk-YOUR-MASTER-KEY    # 改成你自己的密钥，用于 LiteLLM UI + API 认证
+  ui_username: admin
+  ui_password: YOUR-UI-PASSWORD
+  use_aiohttp_transport: false
