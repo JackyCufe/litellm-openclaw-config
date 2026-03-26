@@ -26,32 +26,22 @@ The simplest path — just an Anthropic API Key and you're done.
 ### Setup
 
 ```bash
-# Clone this repo
 git clone https://github.com/JackyCufe/litellm-openclaw-config
 cd litellm-openclaw-config
-
-# Set your API key
 export ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE
-
-# Start the proxy
 litellm --config litellm.config.anthropic.yaml --port 4000
 ```
 
-That's it. Test it:
+Test it:
 
 ```bash
 curl http://localhost:4000/v1/chat/completions \
   -H "Authorization: Bearer sk-YOUR-MASTER-KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "claude-sonnet-4-6",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'
+  -d '{"model": "claude-sonnet-4-6", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
 
 ### Using with OpenClaw
-
-In your OpenClaw config, point to the local proxy:
 
 ```yaml
 model: litellm/claude-sonnet-4-6
@@ -68,19 +58,15 @@ For teams already on Google Cloud — Claude + Gemini via Vertex AI, unified GCP
 
 ### Prerequisites
 
-1. **Google Cloud Project** with Vertex AI API enabled
-2. **Service Account** JSON key with `Vertex AI User` role
-3. **Claude model access** requested in Vertex AI Model Garden ([apply here](https://console.cloud.google.com/vertex-ai/model-garden))
-4. LiteLLM installed
+1. Google Cloud Project with Vertex AI API enabled
+2. Service Account JSON key with `Vertex AI User` role
+3. Claude model access requested in [Vertex AI Model Garden](https://console.cloud.google.com/vertex-ai/model-garden)
 
 ### Setup
 
 ```bash
-# Copy and fill in your values
 cp litellm.config.yaml litellm.config.local.yaml
-# Edit: YOUR_GCP_PROJECT_ID, /path/to/service-account.json, master_key, ui_password
-
-# Start the proxy
+# Edit: YOUR_GCP_PROJECT_ID, /path/to/service-account.json, master_key
 litellm --config litellm.config.local.yaml --port 4000
 ```
 
@@ -88,7 +74,7 @@ litellm --config litellm.config.local.yaml --port 4000
 
 ## 💡 Why LiteLLM + Prompt Caching?
 
-Both configs include **Prompt Caching** — the biggest cost saver when running AI agents:
+Both configs enable **Prompt Caching** — the biggest cost saver for AI agents:
 
 ```yaml
 cache_control_injection_points:
@@ -98,18 +84,7 @@ cache_control_injection_points:
     index: -1        # Cache the last user message
 ```
 
-With an agent like OpenClaw that injects large workspace files every turn, caching slashes repeated token costs by up to 90%.
-
-### `drop_params` — Compatibility Fix
-
-OpenClaw and some other clients send extra fields (`store`, `service_tier`) that Claude/Vertex AI doesn't accept. These settings silently drop them:
-
-```yaml
-drop_params: true
-additional_drop_params:
-  - store
-  - service_tier
-```
+With OpenClaw injecting large workspace files every turn, caching cuts repeated token costs by up to **90%**.
 
 ---
 
@@ -124,23 +99,128 @@ additional_drop_params:
 
 ## Security Notes
 
-- ⚠️ Never commit your actual API keys or service account JSON
-- Use environment variables for secrets:
-  ```bash
-  export ANTHROPIC_API_KEY=sk-ant-...
-  export LITELLM_MASTER_KEY=sk-...
-  ```
+- ⚠️ Never commit API keys or service account JSON
+- Use environment variables: `export ANTHROPIC_API_KEY=sk-ant-...`
 - Add `litellm.config.local.yaml`, `*.json`, `.env` to `.gitignore`
 
 ---
 
 ## References
 
-- [LiteLLM Docs](https://docs.litellm.ai)
-- [Anthropic API Docs](https://docs.anthropic.com)
-- [LiteLLM Vertex AI Guide](https://docs.litellm.ai/docs/providers/vertex)
-- [OpenClaw](https://github.com/openclaw/openclaw)
+- [LiteLLM Docs](https://docs.litellm.ai) · [Anthropic API](https://docs.anthropic.com) · [OpenClaw](https://github.com/openclaw/openclaw)
 
 ---
 
 Maintained by [@JackyCufe](https://github.com/JackyCufe). PRs welcome!
+
+---
+---
+
+# OpenClaw 专用 LiteLLM 配置
+
+一份最小化但生产可用的 [LiteLLM](https://github.com/BerriAI/litellm) 代理配置，支持 Claude 模型 **Prompt 缓存**，专为 [OpenClaw](https://github.com/openclaw/openclaw) 设计。
+
+提供两套配置，按需选择：
+
+| 配置文件 | 适用人群 | 前提条件 |
+|----------|---------|---------|
+| `litellm.config.anthropic.yaml` | **个人用户（推荐）** | 仅需 Anthropic API Key |
+| `litellm.config.yaml` | **企业 / GCP 用户** | 需要 Google Cloud 项目 + Vertex AI |
+
+---
+
+## 🙋 个人用户快速上手（推荐）
+
+最简路径——只需一个 Anthropic API Key，5 分钟跑起来。
+
+### 前提条件
+
+1. **Anthropic API Key** — 在 [console.anthropic.com](https://console.anthropic.com) 申请
+2. **安装 LiteLLM：**
+   ```bash
+   pip install litellm[proxy]
+   ```
+
+### 启动
+
+```bash
+git clone https://github.com/JackyCufe/litellm-openclaw-config
+cd litellm-openclaw-config
+export ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE
+litellm --config litellm.config.anthropic.yaml --port 4000
+```
+
+验证：
+
+```bash
+curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer sk-YOUR-MASTER-KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "claude-sonnet-4-6", "messages": [{"role": "user", "content": "你好！"}]}'
+```
+
+### 在 OpenClaw 中使用
+
+```yaml
+model: litellm/claude-sonnet-4-6
+litellm:
+  api_base: http://localhost:4000
+  api_key: sk-YOUR-MASTER-KEY
+```
+
+---
+
+## 🏢 企业 / GCP Vertex AI 版
+
+适合已在 Google Cloud 生态的团队——Claude + Gemini 统一走 Vertex AI，账单合并到 GCP。
+
+### 前提条件
+
+1. 已开通 Vertex AI API 的 GCP 项目
+2. 具有 `Vertex AI User` 角色的 Service Account JSON 密钥
+3. 在 [Vertex AI Model Garden](https://console.cloud.google.com/vertex-ai/model-garden) 申请 Claude 模型访问权限
+
+### 启动
+
+```bash
+cp litellm.config.yaml litellm.config.local.yaml
+# 填写：YOUR_GCP_PROJECT_ID、/path/to/service-account.json、master_key
+litellm --config litellm.config.local.yaml --port 4000
+```
+
+---
+
+## 💡 为什么用 LiteLLM + Prompt 缓存？
+
+两套配置均内置 **Prompt Caching**，这是 AI Agent 场景下最有效的降本手段：
+
+```yaml
+cache_control_injection_points:
+  - location: message
+    role: system     # 缓存系统消息（MEMORY.md、SOUL.md 等长前缀）
+  - location: message
+    index: -1        # 缓存最后一条用户消息
+```
+
+OpenClaw 每轮都会注入大量 workspace 文件，缓存命中后重复 token 费用可降低 **90%**。
+
+---
+
+## 文件说明
+
+| 文件 | 用途 |
+|------|------|
+| `litellm.config.anthropic.yaml` | 个人版——Claude 直连 Anthropic API |
+| `litellm.config.yaml` | 企业版——Claude + Gemini 走 GCP Vertex AI |
+
+---
+
+## 安全提示
+
+- ⚠️ 切勿将 API Key 或 Service Account JSON 提交到 Git
+- 使用环境变量管理密钥：`export ANTHROPIC_API_KEY=sk-ant-...`
+- 将 `litellm.config.local.yaml`、`*.json`、`.env` 加入 `.gitignore`
+
+---
+
+由 [@JackyCufe](https://github.com/JackyCufe) 维护，欢迎提 PR！
